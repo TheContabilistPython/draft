@@ -1,0 +1,181 @@
+/* Out of Your League design system: the page's typefaces and the tokens of both editions.
+   Floodlight (dark) is the default; Broadsheet (light) follows a light OS until the Tema button picks
+   one. Fonts ship next to this file in ../fonts/; without them the page falls back to system fonts. */
+
+@font-face { font-family: "Archivo"; src: url("../fonts/archivo.ttf") format("truetype"); font-weight: 100 900; font-stretch: 62% 125%; font-display: swap; }
+@font-face { font-family: "Archivo Expanded"; src: url("../fonts/archivo-expanded.ttf") format("truetype"); font-weight: 800; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("../fonts/jetbrains-mono.ttf") format("truetype"); font-weight: 100 800; font-display: swap; }
+@font-face { font-family: "Newsreader"; src: url("../fonts/newsreader.ttf") format("truetype"); font-weight: 200 800; font-display: swap; }
+
+/* ---- tokens: generated from the design system's tokens.json. Floodlight is the default edition;
+   Broadsheet follows a light OS until the Tema button picks one. */
+:root, [data-theme="floodlight"] {
+  color-scheme: dark;
+  --ooyl-head-font: var(--font-display);
+  --ooyl-head-case: uppercase;
+  --ooyl-head-weight: 800;
+  --ooyl-head-track: -0.005em;
+  --ooyl-head-scale: 1;
+  --ooyl-rule: var(--line);
+  --ground: #0a0c0f;
+  --surface: #12161b;
+  --surface-hover: #161a20;
+  --surface-raised: #1a1f26;
+  --line: #20262e;
+  --line-strong: #606a78;
+  --ink: #f3f3ef;
+  --ink-strong: #ffffff;
+  --ink-muted: #7f8995;
+  --accent: #c6f24e;
+  --accent-soft: #c6f24e29;
+  --on-accent: #0a0c0f;
+  --action: var(--accent);
+  --on-action: var(--on-accent);
+  --focus: var(--accent);
+  --data-dot: #e8e8e3;
+  --data-context: var(--line-strong);
+  --home: #7cb8ff;
+  --away: #e8691f;
+  --seq-1: #2a3219;
+  --seq-2: #465a1a;
+  --seq-3: #7a9a2a;
+  --seq-4: #a3cc3b;
+  --seq-5: #c6f24e;
+  --on-seq-low: var(--ink);
+  --on-seq-high: var(--ground);
+  --good: var(--accent);
+  --warn: #f5c542;
+  --bad: #ff5a4f;
+  --zone-libertadores: var(--good);
+  --zone-sudamericana: var(--home);
+  --zone-relegation: var(--bad);
+  --card-yellow: #f5c518;
+  --card-red: #e5383b;
+  --pitch: #0f1914;
+  --pitch-stripe: #121d17;
+  --pitch-line: #ffffff38;
+  --shadow-pop: 0 12px 32px -8px #000000cc;
+  --focus-ring: 0 0 0 2px #0a0c0f, 0 0 0 4px #c6f24e;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    color-scheme: light;
+    --ooyl-head-font: var(--font-serif);
+    --ooyl-head-case: none;
+    --ooyl-head-weight: 600;
+    --ooyl-head-track: -0.012em;
+    --ooyl-head-scale: 1.05;
+    --ooyl-rule: var(--ink);
+    --ground: #f4efe6;
+    --surface: #fbf8f2;
+    --surface-hover: #eee8dc;
+    --surface-raised: #ffffff;
+    --line: #dad2c4;
+    --line-strong: #8b8375;
+    --ink: #16212b;
+    --ink-strong: var(--ink);
+    --ink-muted: #6f685a;
+    --accent: #bd3a2a;
+    --accent-soft: #bd3a2a29;
+    --on-accent: #f4efe6;
+    --action: var(--ink);
+    --on-action: var(--ground);
+    --focus: var(--ink);
+    --data-dot: #16212b;
+    --data-context: var(--line-strong);
+    --home: #2a5da8;
+    --away: #b8651c;
+    --seq-1: #e1e6cb;
+    --seq-2: #b9c78a;
+    --seq-3: #56721f;
+    --seq-4: #3d5516;
+    --seq-5: #2c4410;
+    --on-seq-low: var(--ink);
+    --on-seq-high: var(--ground);
+    --good: #2b7446;
+    --warn: #8f5b00;
+    --bad: var(--accent);
+    --zone-libertadores: var(--good);
+    --zone-sudamericana: var(--home);
+    --zone-relegation: var(--bad);
+    --card-yellow: #f2be1a;
+    --card-red: #d13b2e;
+    --pitch: #edecdd;
+    --pitch-stripe: #e7e6d4;
+    --pitch-line: #16212b52;
+    --shadow-pop: 0 12px 28px -10px #16212b40;
+    --focus-ring: 0 0 0 2px #f4efe6, 0 0 0 4px #16212b;
+  }
+}
+[data-theme="broadsheet"] {
+  color-scheme: light;
+  --ooyl-head-font: var(--font-serif);
+  --ooyl-head-case: none;
+  --ooyl-head-weight: 600;
+  --ooyl-head-track: -0.012em;
+  --ooyl-head-scale: 1.05;
+  --ooyl-rule: var(--ink);
+  --ground: #f4efe6;
+  --surface: #fbf8f2;
+  --surface-hover: #eee8dc;
+  --surface-raised: #ffffff;
+  --line: #dad2c4;
+  --line-strong: #8b8375;
+  --ink: #16212b;
+  --ink-strong: var(--ink);
+  --ink-muted: #6f685a;
+  --accent: #bd3a2a;
+  --accent-soft: #bd3a2a29;
+  --on-accent: #f4efe6;
+  --action: var(--ink);
+  --on-action: var(--ground);
+  --focus: var(--ink);
+  --data-dot: #16212b;
+  --data-context: var(--line-strong);
+  --home: #2a5da8;
+  --away: #b8651c;
+  --seq-1: #e1e6cb;
+  --seq-2: #b9c78a;
+  --seq-3: #56721f;
+  --seq-4: #3d5516;
+  --seq-5: #2c4410;
+  --on-seq-low: var(--ink);
+  --on-seq-high: var(--ground);
+  --good: #2b7446;
+  --warn: #8f5b00;
+  --bad: var(--accent);
+  --zone-libertadores: var(--good);
+  --zone-sudamericana: var(--home);
+  --zone-relegation: var(--bad);
+  --card-yellow: #f2be1a;
+  --card-red: #d13b2e;
+  --pitch: #edecdd;
+  --pitch-stripe: #e7e6d4;
+  --pitch-line: #16212b52;
+  --shadow-pop: 0 12px 28px -10px #16212b40;
+  --focus-ring: 0 0 0 2px #f4efe6, 0 0 0 4px #16212b;
+}
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 72px;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-full: 999px;
+  --content-max: 1120px;
+  --topbar-height: 56px;
+  --poster-width: 1080px;
+  --poster-height: 1350px;
+  --opacity-dot: 0.82;
+  --opacity-disabled: 0.45;
+  --font-display: "Archivo Expanded", "Archivo", system-ui, sans-serif;
+  --font-sans: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace;
+}
