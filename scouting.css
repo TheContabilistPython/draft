@@ -149,6 +149,9 @@ body:not(.is-local) .sc-local-only { display: none; }  /* the local panel's mark
   box-shadow: inset 0 0 0 1px currentColor; font: 700 5.6cqw/1 var(--font-mono);
 }
 .sc-carta__nation { font: 700 6.2cqw/1 var(--font-mono); letter-spacing: 0.04em; }
+.sc-carta__boost {  /* the coach's point: a stamp under the position, in the card's strong colour */
+  padding: 1cqw 2cqw; border-radius: 1.5cqw; background: var(--card-hi); color: var(--card-bg); font: 800 5.6cqw/1 var(--font-display);
+}
 .sc-carta__photo { aspect-ratio: 1; width: 100%; overflow: hidden; display: grid; place-items: center; }
 .sc-carta__photo img { width: 100%; height: 100%; object-fit: cover; mix-blend-mode: multiply; }  /* the photo's white takes the card's metal */
 .sc-carta.is-destaque .sc-carta__photo { background: #ffffff; border-radius: var(--radius-xs); }
@@ -195,6 +198,43 @@ body:not(.is-local) .sc-local-only { display: none; }  /* the local panel's mark
 .sc-buy__text { display: grid; gap: 6px; align-content: start; }
 .sc-buy__text .sc-subhead { margin: 0; }
 .sc-buy__name { margin: 0; color: var(--ink-strong); font: 600 15px/20px var(--font-sans); }
+
+/* ---- draft: the coach, under the pitch, and his draw */
+.sc-coach {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%; max-width: 820px; margin: 0 auto; padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); color: var(--ink); text-align: left;
+}
+.sc-coach.is-empty { border-style: dashed; border-color: var(--line-strong); background: none; cursor: pointer; transition: background-color .12s ease; }
+.sc-coach.is-empty:hover { background: var(--surface-hover); }
+.sc-coach.is-empty:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.sc-coach.is-empty[disabled] { cursor: default; opacity: var(--opacity-disabled); }
+.sc-coach__plus { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--line-strong);
+  font: 800 20px/1 var(--font-display); color: var(--ink-strong); }
+.sc-coach__crest { flex: none; width: 40px; height: 40px; object-fit: contain; }
+.sc-coach__crest.is-code, .sc-coach-offer__crest.is-code { display: grid; place-items: center; border-radius: var(--radius-sm); box-shadow: inset 0 0 0 1.5px currentColor; font: 700 11px/1 var(--font-mono); }
+.sc-coach__text { display: grid; gap: 2px; min-width: 0; }
+.sc-coach__text strong { color: var(--ink-strong); font: 600 15px/20px var(--font-sans); }
+.sc-coach__text small { color: var(--ink-muted); font: 400 12.5px/17px var(--font-sans); }
+.sc-coach-offers { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-3); }
+.sc-coach-offer {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; padding: var(--space-4) var(--space-3); text-align: center;
+  border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface-hover); color: var(--ink); cursor: pointer;
+  transition: border-color .12s ease, background-color .12s ease;
+}
+.sc-coach-offer:hover { border-color: var(--line-strong); background: var(--surface-raised); }
+.sc-coach-offer:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.sc-coach-offer__crest { width: 48px; height: 48px; object-fit: contain; }
+.sc-coach-offer__name { color: var(--ink-strong); font: 600 15px/19px var(--font-sans); }
+.sc-coach-offer__club { color: var(--ink); font: 400 12.5px/17px var(--font-sans); }
+.sc-coach-offer__meta { color: var(--ink-muted); font: 600 11px/1 var(--font-mono); letter-spacing: 0.06em; }
+.sc-coach-offer__gain { margin-top: auto; padding-top: 4px; color: var(--ink-muted); font: 500 12.5px/17px var(--font-sans); }
+.sc-coach-offer__gain.is-on { color: var(--accent); font-weight: 600; }
+@media (max-width: 860px) {
+  .sc-coach-offers { grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+  .sc-coach-offer { display: grid; grid-template-columns: 48px minmax(0, 1fr); column-gap: var(--space-3); row-gap: 2px; align-items: center; text-align: left; }
+  .sc-coach-offer__crest { grid-row: span 4; }
+  .sc-coach-offer__gain { margin-top: 0; padding-top: 0; }
+}
 
 /* ---- draft: the cup's screen (#/copa, web/copa.js): the match of the moment, its line-ups, the round, the bracket */
 .sc-cup .sc-head .ooyl-kicker { margin-bottom: 2px; }
@@ -332,6 +372,7 @@ body:not(.is-local) .sc-local-only { display: none; }  /* the local panel's mark
   .sc-carta__side { gap: 3cqw; padding-top: 2cqw; }
   .sc-carta__ovr { font-size: 25cqw; }
   .sc-carta__pos { font-size: 11cqw; }
+  .sc-carta__boost { font-size: 9cqw; padding: 1.5cqw 2.5cqw; }
   .sc-carta__captain { width: 18cqw; height: 18cqw; font-size: 10cqw; right: -3cqw; top: -3cqw; }
   .sc-carta__name { margin-top: auto; padding: 0; border: 0; font-size: min(12.5cqw, calc(100cqw / var(--len))); }
   .sc-draft-slot__foot { flex-direction: column; gap: 3px; }

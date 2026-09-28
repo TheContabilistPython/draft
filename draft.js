@@ -2,9 +2,10 @@
 // budget, then a captain among five stars; then click each position and keep one of five players drawn for it. A card
 // costs the player's market value (SofaScore), and every draw holds at least two cards the budget allows while keeping
 // enough for the positions still empty, so the eleven always closes. The cards (overall, six attributes, tier) come
-// from draft.py (printed by carta.js); the chemistry is the Seleção's. A finished draft shows its best buy and starts
-// a simulated cup, on its own screen (#/copa, copa.js). The draft is saved in this browser, draws and cup included, so
-// reloading the page never draws again.
+// from draft.py (printed by carta.js); the chemistry is the Seleção's. A coach, one of five drawn, adds COACH_BOOST to
+// the overall of each drafted player of his club. A finished draft shows its best buy and starts a simulated cup, on
+// its own screen (#/copa, copa.js). The draft is saved in this browser, draws and cup included, so reloading the page
+// never draws again.
 
 import { el, state, localGet, localSet, num, euros, country, playerLink, functionLabel, highlights, card, pageHead, playerRef, findRef } from "./comum.js";
 import { FORMATIONS, formationSlots, chemistry, dots } from "./selecao.js";
@@ -23,7 +24,8 @@ const BUDGETS = [["apertado", "Apertado", 0.2], ["medio", "Médio", 0.4], ["folg
 const VERDICTS = [[84, "Time de campeão"], [82, "Briga pelo título"], [80, "Vaga na Libertadores"], [78, "Meio de tabela"],
   [76, "Luta contra o rebaixamento"], [0, "Série B à vista"]];
 const STEPS = ["inicio", "capitao", "campo"];
-const local = { draft: null, root: null, open: null, show: null, confirmNew: false };
+const COACH_BOOST = 1;  // overall points the coach adds to each drafted player of his club
+const local = { draft: null, root: null, open: null, show: null, coachOpen: false, confirmNew: false };
 
 const refOf = (c) => playerRef(c.slug, c.player);
 const byOverall = (a, b) => b.player.carta.geral - a.player.carta.geral;
@@ -37,7 +39,7 @@ const money = (v) => (v >= 1e6 ? `€ ${num(v / 1e6, Number.isInteger(Math.round
 function blank(formation = "4-3-3", pool = "todas", tier = "medio") {
   const shape = formationSlots(formation);
   return { v: 2, formation, pool, tier, budget: null, step: "inicio", shape, slots: shape.map(() => null), captain: null,
-           offers: {}, captains: [], cup: null };
+           offers: {}, captains: [], coach: null, coaches: [], cup: null };
 }
 
 function load() {
@@ -60,6 +62,9 @@ function load() {
     if (slot && !draft.slots[i] && Array.isArray(refs) && refs.every((ref) => fits(ref, slot.role))) draft.offers[i] = refs;
   }
   draft.captain = draft.slots[saved.captain] ? saved.captain : null;
+  const coaches = new Set(coachList(draft).map((c) => c.key));  // a coach, or a draw of them, gone from the data is dropped
+  draft.coach = coaches.has(saved.coach) ? saved.coach : null;
+  draft.coaches = Array.isArray(saved.coaches) && saved.coaches.every((key) => coaches.has(key)) ? saved.coaches : [];
   const cup = saved.cup;  // a cup belongs to a finished draft; one saved before the line-ups (no xi) is dropped
   if (draft.slots.every(Boolean) && cup && cup.v === 2 && Array.isArray(cup.teams) && cup.teams.length === 16
       && cup.teams.some((t) => t.user) && cup.teams.every((t) => Array.isArray(t.xi) && t.xi.every((ref) => findRef(ref)))
@@ -184,6 +189,30 @@ function captainCheck(draft) {  // (card) => the budget allows him as captain, i
   };
 }
 
+// ---- the coach: +COACH_BOOST on the overall of each drafted player of his club
+
+function coachList(draft) {  // the clubs of the chosen leagues whose coach is known: {key, slug, id, club, escudo, league, coach}
+  const found = new Map();
+  for (const c of pool(draft, false)) {
+    const key = `${c.slug}:${c.player.clube}`, info = state.data[c.slug].clubes?.[c.player.clube];
+    if (c.player.clube == null || found.has(key) || !info?.tecnico) continue;
+    found.set(key, { key, slug: c.slug, id: c.player.clube, club: c.player.time, escudo: c.player.escudo, league: c.league, coach: info.tecnico });
+  }
+  return [...found.values()];
+}
+
+const coachOf = (draft) => (draft.coach ? coachList(draft).find((c) => c.key === draft.coach) || null : null);
+const boostOf = (draft, ref) => (ref && draft.coach && `${ref.slug}:${ref.player.clube}` === draft.coach ? COACH_BOOST : 0);
+
+function drawCoaches(draft) {  // five of them, any club as likely as another
+  return coachList(draft).map((c) => ({ c, key: Math.random() })).sort((a, b) => a.key - b.key).slice(0, OFFER).map(({ c }) => c.key);
+}
+
+function clubCrest(c, cls) {
+  return c.escudo ? el("img", { class: cls, src: `escudos/${c.slug}/${c.id}.png`, alt: "" })
+    : el("span", { class: `${cls} is-code`, text: (c.club || "?").slice(0, 3).toUpperCase() });
+}
+
 // ---- the best buy: the pick that saved the most against what a card of his overall usually costs in this draw
 
 function typicalPrice(draft) {  // (overall) => the median price of the draw's cards of that overall (widening to ±4)
@@ -214,7 +243,8 @@ function bestBuy(draft, refs) {
     : "Ninguém saiu abaixo do preço típico; esta foi a que mais se aproximou.";
   return el("div", { class: "sc-buy" },
     el("button", { class: "sc-buy__card", type: "button", "aria-label": `Ver a carta de ${p.nome}`,
-      onclick: () => { local.show = local.draft.slots.indexOf(playerRef(best.ref.slug, p)); draw(); } }, playerCard(best.ref)),
+      onclick: () => { local.show = local.draft.slots.indexOf(playerRef(best.ref.slug, p)); draw(); } },
+      playerCard(best.ref, { boost: boostOf(draft, best.ref) })),
     el("div", { class: "sc-buy__text" },
       el("h3", { class: "sc-subhead", text: "Melhor compra" }),
       el("p", { class: "sc-buy__name", text: `${p.nome} · ${euros(p.valor)}` }),
@@ -263,12 +293,27 @@ function start() {
   draw();
 }
 
-function close() { local.open = null; local.show = null; draw(); }
+function openCoach() {
+  const draft = local.draft;
+  if (draft.coach) return;
+  if (!draft.coaches.length) { draft.coaches = drawCoaches(draft); save(); }
+  local.coachOpen = true;
+  draw();
+}
+
+function pickCoach(key) {
+  Object.assign(local.draft, { coach: key, coaches: [] });
+  local.coachOpen = false;
+  save();
+  draw();
+}
+
+function close() { local.open = null; local.show = null; local.coachOpen = false; draw(); }
 
 // ---- the view
 
-function teamRating(refs) {
-  const cards = refs.filter(Boolean).map((r) => r.player.carta.geral);
+function teamRating(refs, draft = local.draft) {  // the mean of the cards, each with the coach's point when he has it
+  const cards = refs.filter(Boolean).map((r) => r.player.carta.geral + boostOf(draft, r));
   return cards.length ? Math.round(sum(cards) / cards.length) : null;
 }
 
@@ -294,7 +339,7 @@ function offerList(refs, onPick, ok = () => true) {
     if (!fit) meta.prepend(el("span", { class: "sc-offer__over", text: "Acima do saldo desta vaga" }));
     return el("button", { class: "sc-offer" + (fit ? "" : " is-over"), type: "button", disabled: !fit, onclick: () => onPick(text),
       "aria-label": `${fit ? "Escolher" : "Fora do orçamento:"} ${ref.player.nome}, geral ${ref.player.carta.geral}` },
-      playerCard(ref), meta);
+      playerCard(ref, { boost: boostOf(local.draft, ref) }), meta);
   }));
 }
 
@@ -349,8 +394,39 @@ function slotNode(i, ref, chem) {
   }
   return el("button", { class: "sc-draft-slot", type: "button", title: `${ref.player.nome} · ${ref.player.time}`,
     "aria-label": `Ver a carta de ${ref.player.nome}`, onclick: () => { local.show = i; draw(); } },
-    playerCard(ref, { captain: draft.captain === i }),
+    playerCard(ref, { captain: draft.captain === i, boost: boostOf(draft, ref) }),
     el("span", { class: "sc-draft-slot__foot" }, dots(chem), el("span", { class: "sc-draft-slot__price", text: ref.player.valor ? euros(ref.player.valor) : "–" })));
+}
+
+function coachSlot(draft, refs) {  // under the pitch: the coach, or the way to draw five
+  const coach = coachOf(draft), locked = !!draft.cup || draft.step !== "campo";
+  if (!coach) {
+    return el("button", { class: "sc-coach is-empty", type: "button", disabled: locked, onclick: openCoach },
+      el("span", { class: "sc-coach__plus", text: "+" }),
+      el("span", { class: "sc-coach__text" }, el("strong", { text: "Técnico" }),
+        el("small", { text: locked && draft.cup ? "a Copa começou sem técnico" : `Sorteie cinco e fique com um: os jogadores do clube dele ganham +${COACH_BOOST} no geral.` })));
+  }
+  const coached = refs.filter((r) => boostOf(draft, r)).length;
+  return el("div", { class: "sc-coach" }, clubCrest(coach, "sc-coach__crest"),
+    el("span", { class: "sc-coach__text" }, el("span", { class: "ooyl-kicker", text: "Técnico" }), el("strong", { text: coach.coach.nome }),
+      el("small", { text: `${coach.club} · ${coached ? `+${COACH_BOOST} em ${coached} ${coached === 1 ? "jogador" : "jogadores"}`
+        : "nenhum jogador do clube dele ainda"}` })));
+}
+
+function coachOffers(draft, refs) {
+  const list = coachList(draft);
+  return el("div", { class: "sc-coach-offers" }, draft.coaches.map((key) => {
+    const c = list.find((x) => x.key === key);
+    if (!c) return null;
+    const mine = refs.filter((r) => r && `${r.slug}:${r.player.clube}` === key).length;
+    return el("button", { class: "sc-coach-offer", type: "button", onclick: () => pickCoach(key), "aria-label": `Escolher ${c.coach.nome}, técnico do ${c.club}` },
+      clubCrest(c, "sc-coach-offer__crest"),
+      el("span", { class: "sc-coach-offer__name", text: c.coach.nome }),
+      el("span", { class: "sc-coach-offer__club", text: `${c.club} · ${leagueName(c)}` }),
+      c.coach.pais3 ? el("span", { class: "sc-coach-offer__meta", text: c.coach.pais3 }) : null,
+      el("span", { class: "sc-coach-offer__gain" + (mine ? " is-on" : ""), text: mine
+        ? `+${COACH_BOOST} em ${mine} ${mine === 1 ? "jogador seu" : "jogadores seus"} agora` : "nenhum jogador seu é do clube dele" }));
+  }));
 }
 
 function pitch(refs, chem) {
@@ -385,11 +461,12 @@ function newButton(primary) {
 
 function tiles(refs, chem) {
   const draft = local.draft, count = refs.filter(Boolean).length, rating = teamRating(refs), done = count === draft.shape.length;
-  const used = spent(draft);
+  const used = spent(draft), coached = refs.filter((r) => boostOf(draft, r)).length;
   const tile = (label, value, note) => el("div", { class: "ooyl-tile" }, el("span", { class: "ooyl-tile__label", text: label }),
     el("span", { class: "ooyl-tile__value", text: value }), el("span", { class: "ooyl-tile__note", text: note }));
   return el("div", { class: "ooyl-tiles sc-draft-tiles" },
-    tile("Geral", rating == null ? "–" : String(rating), count ? `média de ${count} ${count === 1 ? "carta" : "cartas"}` : "nenhuma carta ainda"),
+    tile("Geral", rating == null ? "–" : String(rating), !count ? "nenhuma carta ainda"
+      : `média de ${count} ${count === 1 ? "carta" : "cartas"}` + (coached ? `, ${coached} com +${COACH_BOOST} do técnico` : "")),
     tile("Química", chem.team == null ? "–" : String(chem.team), `de 100 · ${chem.links.length} ${chem.links.length === 1 ? "ligação" : "ligações"}`),
     draft.budget == null ? tile("Gasto", money(used), "sem limite de orçamento")
       : tile("Saldo", money(draft.budget - used), `de ${money(draft.budget)} · gastou ${money(used)}`),
@@ -409,6 +486,8 @@ function explain() {
     item("Preço", "o valor de mercado do jogador no SofaScore, em euros, do dia em que o jogo dele foi baixado. O orçamento é uma "
       + "parte do que custam as estrelas das ligas escolhidas. Cada sorteio traz pelo menos duas cartas que cabem no saldo, "
       + "guardando o mínimo para as vagas que faltam, então o time sempre fecha."),
+    item("Técnico", "cinco sorteados entre os técnicos atuais dos clubes das ligas escolhidas; cada jogador seu do clube dele "
+      + `ganha +${COACH_BOOST} no geral. Escolha quando quiser antes da Copa: cedo, para montar o time em volta dele, ou no fim.`),
     item("Química", "a mesma da Seleção, pelas ligações entre vizinhos no campo.")));
 }
 
@@ -434,13 +513,14 @@ function draw() {
         el("div", { class: "sc-draft-done__verdict" },
           el("p", { class: "ooyl-kicker", text: "Draft completo" }),
           el("h2", { class: "ooyl-headline", text: verdict(rating) }),
-          el("p", { class: "ooyl-sub", text: `${draft.formation} · geral ${rating} · química ${chem.team ?? "–"} · ${cost}.` }),
+          el("p", { class: "ooyl-sub", text: `${draft.formation} · geral ${rating} · química ${chem.team ?? "–"} · ${cost}`
+            + (coachOf(draft) ? ` · técnico ${coachOf(draft).coach.nome}.` : ". Sem técnico.") }),
           el("div", { class: "sc-actions" },
             el("a", { class: "ooyl-btn ooyl-btn--primary", href: "#/copa", text: draft.cup ? "Continuar a Copa" : "Iniciar a Copa" }),
             newButton(false))),
         bestBuy(draft, refs)));
     }
-    parts.push(el("div", { class: "sc-draft-field" }, pitch(refs, chem),
+    parts.push(el("div", { class: "sc-draft-field" }, pitch(refs, chem), coachSlot(draft, refs),
       el("p", { class: "sc-note", text: "Clique numa carta escalada para vê-la inteira, com clube, idade e valor." })));
     parts.push(explain());
     if (draft.step === "capitao") {
@@ -458,10 +538,13 @@ function draw() {
         : `Você pode gastar até ${money(slotLimit(draft, i))} aqui${rest}. `
           + (fit === OFFER ? "Todas as cinco cabem." : `${fit === 1 ? "Uma cabe" : `${fit} cabem`} no saldo.`);
       parts.push(dialog(`Escolha o ${state.meta.papeis[role].singular}`, sub, offerList(draft.offers[i], (ref) => pick(i, ref), ok), true));
+    } else if (local.coachOpen && draft.coaches.length) {
+      parts.push(dialog("Escolha o técnico", `Cinco técnicos sorteados. Cada jogador seu do clube dele ganha +${COACH_BOOST} no geral; `
+        + "a escolha não volta.", coachOffers(draft, refs), true));
     } else if (local.show != null && refs[local.show]) {
       const ref = refs[local.show];
       parts.push(dialog(ref.player.nome, null, el("div", { class: "sc-detail" },
-        playerCard(ref, { captain: draft.captain === local.show }),
+        playerCard(ref, { captain: draft.captain === local.show, boost: boostOf(draft, ref) }),
         el("div", { class: "sc-detail__side" }, offerMeta(ref),
           el("div", { class: "sc-actions" }, el("a", { class: "ooyl-btn ooyl-btn--sm", href: (state.playerBase || "") + playerLink(ref.slug, ref.player),
             text: "Ver todos os números", onclick: () => { state.back = "#/draft"; local.show = null; } })))), true, null, false));
@@ -469,7 +552,8 @@ function draw() {
   }
   local.root.replaceChildren(...parts);
   document.body.classList.toggle("sc-has-dialog", !!local.root.querySelector(".sc-draft-dialog"));
-  (local.root.querySelector(".sc-draft-dialog .sc-offer:not([disabled])") || local.root.querySelector(".sc-draft-dialog .ooyl-btn"))
+  (local.root.querySelector(".sc-draft-dialog .sc-offer:not([disabled]), .sc-draft-dialog .sc-coach-offer")
+    || local.root.querySelector(".sc-draft-dialog .ooyl-btn"))
     ?.focus({ preventScroll: true });
 }
 
@@ -479,8 +563,10 @@ function ensureCup() {  // the finished draft's cup, drawn the first time: its c
   const draft = local.draft, refs = draft.slots.map((ref) => findRef(ref));
   if (!refs.every(Boolean)) return null;
   if (!draft.cup) {
-    const overall = refs.reduce((s, r) => s + r.player.carta.geral, 0) / refs.length;
-    const team = { formation: draft.formation, xi: [...draft.slots], captain: draft.captain, overall, chemistry: chemistry(refs, draft.shape).team };
+    const boosts = refs.map((r) => boostOf(draft, r)), coach = coachOf(draft);
+    const overall = refs.reduce((s, r, i) => s + r.player.carta.geral + boosts[i], 0) / refs.length;
+    const team = { formation: draft.formation, xi: [...draft.slots], captain: draft.captain, overall, boosts,
+                   coach: coach ? coach.coach.nome : null, chemistry: chemistry(refs, draft.shape).team };
     draft.cup = newCup(clubsOf(pool(draft, false), new Set(draft.slots)), team);
     save();
   }

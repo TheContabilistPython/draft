@@ -72,7 +72,8 @@ export function clubsOf(cards, drafted) {
     if (!eleven) continue;  // no goalkeeper with a card: the club can't field eleven
     const overall = mean(eleven.slots.map((c) => c.player.carta.geral));
     const chem = chemistry(eleven.slots, formationSlots(eleven.formation)).team;
-    clubs.push({ ...club, formation: eleven.formation, xi: eleven.slots.map(refOf), overall, chemistry: chem, strength: strength(overall, chem) });
+    const coach = state.data[club.slug]?.clubes?.[club.id]?.tecnico?.nome || null;
+    clubs.push({ ...club, formation: eleven.formation, xi: eleven.slots.map(refOf), coach, overall, chemistry: chem, strength: strength(overall, chem) });
   }
   return clubs;
 }
@@ -268,13 +269,14 @@ function teamHead(team) {
   return el("div", { class: "sc-match__team" + (team.user ? " is-user" : "") }, crest(team, "sc-match__crest"),
     el("span", { class: "sc-match__name", text: team.name, style: `--len: ${Math.max(8, team.name.length)}` }),
     el("span", { class: "sc-match__meta", text: team.user ? `força ${num(team.strength, 1)}` : `${leagueOf(team)} · força ${num(team.strength, 1)}` }),
-    el("span", { class: "sc-match__meta", text: `geral ${num(team.overall, 1)} · química ${team.chemistry ?? "–"}` }));
+    el("span", { class: "sc-match__meta", text: `geral ${num(team.overall, 1)} · química ${team.chemistry ?? "–"}` }),
+    team.coach ? el("span", { class: "sc-match__meta", text: `técnico ${team.coach}` }) : null);
 }
 
 function lineups(cup, a, b) {
   const side = (team) => el("div", { class: "sc-lineups__side" },
     el("h3", { class: "sc-subhead", text: `${team.name} · ${team.formation}` }),
-    lineupPitch(team.formation, team.xi.map(findRef), { captain: team.user ? team.captain : null }));
+    lineupPitch(team.formation, team.xi.map(findRef), { captain: team.user ? team.captain : null, boosts: (team.user && team.boosts) || [] }));
   const user = cup.teams[a].user ? a : b;
   return el("div", { class: "ooyl-card sc-lineups" }, el("div", { class: "ooyl-card__head" }, el("div", { class: "ooyl-card__titles" },
     el("h2", { class: "ooyl-headline ooyl-headline--sm", text: "Escalações" }),
