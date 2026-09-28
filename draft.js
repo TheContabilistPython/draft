@@ -2,12 +2,14 @@
 // budget, then a captain among five stars; then click each position and keep one of five players drawn for it. A card
 // costs the player's market value (SofaScore), and every draw holds at least two cards the budget allows while keeping
 // enough for the positions still empty, so the eleven always closes. The cards (overall, six attributes, tier) come
-// from draft.py; the chemistry is the Seleção's. A finished draft shows its best buy and plays a simulated cup
-// (copa.js). The draft is saved in this browser, draws and cup included, so reloading the page never draws again.
+// from draft.py (printed by carta.js); the chemistry is the Seleção's. A finished draft shows its best buy and starts
+// a simulated cup, on its own screen (#/copa, copa.js). The draft is saved in this browser, draws and cup included, so
+// reloading the page never draws again.
 
 import { el, state, localGet, localSet, num, euros, country, playerLink, functionLabel, highlights, card, pageHead, playerRef, findRef } from "./comum.js";
 import { FORMATIONS, formationSlots, chemistry, dots } from "./selecao.js";
-import { clubsOf, newCup, playRound, cupCard, ROUNDS } from "./copa.js";
+import { playerCard, crest } from "./carta.js";
+import { clubsOf, newCup, cupScreen } from "./copa.js";
 
 const OFFER = 5;  // players drawn for each position
 const AFFORDABLE = 2;  // at least this many of them within the budget
@@ -58,9 +60,10 @@ function load() {
     if (slot && !draft.slots[i] && Array.isArray(refs) && refs.every((ref) => fits(ref, slot.role))) draft.offers[i] = refs;
   }
   draft.captain = draft.slots[saved.captain] ? saved.captain : null;
-  const cup = saved.cup;  // a cup belongs to a finished draft
-  if (draft.slots.every(Boolean) && cup && Array.isArray(cup.teams) && cup.teams.length === 16 && cup.teams.some((t) => t.user)
-      && Array.isArray(cup.results) && cup.results.length <= ROUNDS.length) draft.cup = cup;
+  const cup = saved.cup;  // a cup belongs to a finished draft; one saved before the line-ups (no xi) is dropped
+  if (draft.slots.every(Boolean) && cup && cup.v === 2 && Array.isArray(cup.teams) && cup.teams.length === 16
+      && cup.teams.some((t) => t.user) && cup.teams.every((t) => Array.isArray(t.xi) && t.xi.every((ref) => findRef(ref)))
+      && Array.isArray(cup.results) && cup.results.length <= 4) draft.cup = cup;
   draft.step = STEPS.includes(saved.step) ? saved.step : "inicio";
   if (draft.step === "capitao") {
     draft.captains = Array.isArray(saved.captains) && saved.captains.every((ref) => fits(ref)) ? saved.captains : drawCaptains(draft);
@@ -220,41 +223,7 @@ function bestBuy(draft, refs) {
         + `${num(worst.share, 1)} vezes o preço típico de uma carta ${worst.ref.player.carta.geral}.` }) : null));
 }
 
-// ---- the card
-
-const initials = (name) => (name || "?").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 const leagueName = (ref) => ref.league.replace(/ \d{4}$/, "");  // "Série A 2026" -> "Série A"
-
-function crest(slug, p, cls) {
-  return p.escudo ? el("img", { class: cls, src: `escudos/${slug}/${p.clube}.png`, alt: p.time, title: p.time })
-    : el("span", { class: `${cls} is-code`, text: (p.time || "?").slice(0, 3).toUpperCase(), title: p.time });
-}
-
-// The card: overall, position, crest and nationality down the side, the photo, the name and six attributes. The same
-// card goes in the draws and on the pitch; a narrow pitch (phones) hides the attributes, and a tap shows the card whole.
-export function playerCard(ref, { captain = false } = {}) {
-  const p = ref.player, c = p.carta, keeper = p.pos === "GOL";
-  const labels = keeper ? state.meta.carta.goleiro : state.meta.carta.linha;
-  // SofaScore's short name ("L. Acosta"), unless the full one is shorter ("David", not "D. M. d. S. Arcanjo")
-  const name = [p.curto, p.nome].filter(Boolean).sort((x, y) => x.length - y.length)[0] || "?";
-  return el("div", {
-    class: `sc-carta is-${c.nivel}`, role: "img",
-    "aria-label": `${p.nome}, ${p.pos}, geral ${c.geral}, carta ${c.nivel}. `
-      + labels.map((l, k) => `${state.meta.carta.nomes[l]} ${c.atr[k]}`).join(", "),
-  }, el("div", { class: "sc-carta__in" },  // the card is the size container: everything inside is sized in cqw
-    el("div", { class: "sc-carta__top" },
-      el("div", { class: "sc-carta__side" },
-        el("span", { class: "sc-carta__ovr", text: c.geral }),
-        el("span", { class: "sc-carta__pos", text: p.pos }),
-        crest(ref.slug, p, "sc-carta__crest"),
-        el("span", { class: "sc-carta__nation", text: p.pais3 || "–", title: country(p.pais) })),
-      el("div", { class: "sc-carta__photo" }, p.foto ? el("img", { src: `faces/${ref.slug}/${p.id}.png`, alt: "" })
-        : el("span", { class: "sc-carta__initials", text: initials(p.nome) })),
-      captain ? el("span", { class: "sc-carta__captain", text: "C", title: "Capitão" }) : null),
-    el("div", { class: "sc-carta__name", text: name, style: `--len: ${Math.max(9, name.length)}` }),
-    el("div", { class: "sc-carta__attrs" }, labels.map((label, k) => el("span", { class: "sc-carta__attr", title: state.meta.carta.nomes[label] },
-      el("b", { text: c.atr[k] }), el("i", { text: label }))))));
-}
 
 // ---- actions
 
@@ -466,17 +435,10 @@ function draw() {
           el("p", { class: "ooyl-kicker", text: "Draft completo" }),
           el("h2", { class: "ooyl-headline", text: verdict(rating) }),
           el("p", { class: "ooyl-sub", text: `${draft.formation} · geral ${rating} · química ${chem.team ?? "–"} · ${cost}.` }),
-          el("div", { class: "sc-actions" }, newButton(true))),
+          el("div", { class: "sc-actions" },
+            el("a", { class: "ooyl-btn ooyl-btn--primary", href: "#/copa", text: draft.cup ? "Continuar a Copa" : "Iniciar a Copa" }),
+            newButton(false))),
         bestBuy(draft, refs)));
-      if (!draft.cup) {  // the cup's clubs play without the drafted players
-        const overall = refs.reduce((s, r) => s + r.player.carta.geral, 0) / refs.length;
-        draft.cup = newCup(clubsOf(pool(draft, false), new Set(draft.slots)), { overall, chemistry: chem.team });
-        save();
-      }
-      parts.push(cupCard(draft.cup, {
-        onPlay: (all) => { do playRound(draft.cup); while (all && draft.cup.results.length < ROUNDS.length); save(); draw(); },
-        onNew: () => { draft.cup = null; save(); draw(); },
-      }));
     }
     parts.push(el("div", { class: "sc-draft-field" }, pitch(refs, chem),
       el("p", { class: "sc-note", text: "Clique numa carta escalada para vê-la inteira, com clube, idade e valor." })));
@@ -509,6 +471,46 @@ function draw() {
   document.body.classList.toggle("sc-has-dialog", !!local.root.querySelector(".sc-draft-dialog"));
   (local.root.querySelector(".sc-draft-dialog .sc-offer:not([disabled])") || local.root.querySelector(".sc-draft-dialog .ooyl-btn"))
     ?.focus({ preventScroll: true });
+}
+
+// ---- the cup's screen (#/copa)
+
+function ensureCup() {  // the finished draft's cup, drawn the first time: its clubs play without the drafted players
+  const draft = local.draft, refs = draft.slots.map((ref) => findRef(ref));
+  if (!refs.every(Boolean)) return null;
+  if (!draft.cup) {
+    const overall = refs.reduce((s, r) => s + r.player.carta.geral, 0) / refs.length;
+    const team = { formation: draft.formation, xi: [...draft.slots], captain: draft.captain, overall, chemistry: chemistry(refs, draft.shape).team };
+    draft.cup = newCup(clubsOf(pool(draft, false), new Set(draft.slots)), team);
+    save();
+  }
+  return draft.cup;
+}
+
+export function copaView() {
+  if (!local.draft) local.draft = load();
+  const root = el("div", {});
+  const redraw = () => {
+    const cup = ensureCup();
+    if (!cup) {  // no finished draft in this browser: back to it
+      root.replaceChildren(el("section", { class: "view" }, pageHead("Copa simulada", "A Copa começa quando o seu time estiver completo."),
+        el("div", { class: "sc-actions" }, el("a", { class: "ooyl-btn ooyl-btn--primary", href: "#/", text: "Montar o time" }))));
+      return;
+    }
+    root.replaceChildren(cupScreen(cup, {
+      change: (fn) => {
+        const step = `${cup.results.length}:${cup.seen}`;
+        fn(cup);
+        save();
+        redraw();
+        if (`${cup.results.length}:${cup.seen}` !== step) window.scrollTo(0, 0);  // a new stage starts at the top
+      },
+      back: () => { location.hash = "#/"; },
+      again: () => { local.draft.cup = null; ensureCup(); redraw(); window.scrollTo(0, 0); },
+    }));
+  };
+  redraw();
+  return root;
 }
 
 export function draftView() {
